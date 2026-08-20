@@ -34,20 +34,19 @@ defmodule Recommender.Release do
   end
 end
 
-defmodule Recommender.Release.CockroachStep do
+defmodule Recommender.Release.BundleStep do
   @moduledoc """
-  Burrito patch-phase step: bundle the per-target embedded service binaries.
+  Burrito patch-phase step: bundle the per-target embedded service binary.
 
-  Delegates provisioning to `CockroachLocal.Provision.install/3` and
-  `VersitygwLocal.Provision.install/3`, which download the matching
-  [`V-Sekai/cockroach`](https://github.com/V-Sekai/cockroach) (22.1 LTS SQL
-  store) and [`versity/versitygw`](https://github.com/versity/versitygw)
-  (S3 gateway) single binaries, extract, and land them in the payload's
-  `lib/residual_fsq_recommender-*/priv/<tool>/` so `CockroachLocal.bin/1` /
-  `VersitygwLocal.bin/1` find them at runtime via `:code.priv_dir/1`.
+  Delegates provisioning to `VersitygwLocal.Provision.install/3`, which downloads the matching
+  [`versity/versitygw`](https://github.com/versity/versitygw) S3 gateway single binary,
+  extracts it, and lands it in the payload's `lib/residual_fsq_recommender-*/priv/versitygw/`
+  so `VersitygwLocal.bin/1` finds it at runtime via `:code.priv_dir/1`.
 
-  Only the target being built is bundled — each triplet's binary carries one
-  cockroach + one versitygw.
+  It used to bundle a cockroach binary beside it. The database is remote now, so there is
+  nothing to ship for it, and a binary per build target stopped being the cost of persistence.
+
+  Only the target being built is bundled.
   """
 
   @behaviour Burrito.Builder.Step
@@ -59,9 +58,8 @@ defmodule Recommender.Release.CockroachStep do
     target = {context.target.os, context.target.cpu}
     dest_root = priv_dir!(context.work_dir)
 
-    {:ok, crdb} = CockroachLocal.Provision.install(target, dest_root)
     {:ok, vgw} = VersitygwLocal.Provision.install(target, dest_root)
-    Logger.info("rfr: bundled #{Path.basename(crdb)} + #{Path.basename(vgw)} -> #{dest_root}")
+    Logger.info("rfr: bundled #{Path.basename(vgw)} -> #{dest_root}")
 
     context
   end

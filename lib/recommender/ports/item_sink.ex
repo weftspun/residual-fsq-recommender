@@ -6,7 +6,7 @@ defmodule Recommender.Ports.ItemSink do
   Driven sink port: write items and session transitions outward.
 
   `*_sink` ports transmit core-side facts to the outside world (the embedded
-  CockroachDB adapter in production, the in-memory fixture adapter in CI).
+  remote SQL adapter in production, the in-memory fixture adapter in CI).
   `state` is the adapter's opaque handle.
   """
 

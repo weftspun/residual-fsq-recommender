@@ -6,7 +6,7 @@ defmodule Recommender.Ports.ItemSource do
   Driven source port: read stored items and transition counts inbound.
 
   The FuXi-Linear recommender (`Recommender.Adapters.Serve`) is fed from whatever
-  implements this contract — the embedded CockroachDB adapter in production, the
+  implements this contract — the remote SQL adapter in production, the
   in-memory fixture adapter in CI. Per the hexagonal decision record
   (`20260610-hexagonal-core-ports-adapters`), `*_source` ports read data
   inbound; `state` is the adapter's opaque handle (a DB connection, an Agent
