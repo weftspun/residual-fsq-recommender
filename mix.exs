@@ -15,8 +15,8 @@ defmodule Recommender.MixProject do
       description:
         "Generative next-item recommender (FuXi-Linear linear-attention) over " <>
           "residual FSQ semantic IDs. Trie-constrained beam decode; ID codec certified in " <>
-          "Lean via plausible-witness-dag. Ships as a self-contained Burrito binary with an " <>
-          "embedded CockroachDB store.",
+          "Lean via plausible-witness-dag. Ships as a self-contained Burrito binary and " <>
+          "talks to a remote SQL database.",
       package: [
         licenses: ["MIT"],
         links: %{"GitHub" => @source_url}
@@ -36,8 +36,9 @@ defmodule Recommender.MixProject do
   # V-Sekai-fire/multiplayer-fabric-taskweft pattern: the wrap step only
   # invokes Burrito when a zig toolchain is present (or RFR_BURRITO=1 forces
   # it), so a plain `mix release rfr` still assembles without the toolchain.
-  # The CockroachStep patch step downloads the matching V-Sekai/cockroach
-  # single binary per target and lands it in the payload's priv/cockroach/.
+  # The BundleStep patch step downloads the matching versitygw single binary
+  # per target and lands it in the payload's priv/versitygw/. It used to carry
+  # a cockroach binary beside it, and the database is remote now.
   defp releases do
     [
       rfr: [
@@ -51,7 +52,7 @@ defmodule Recommender.MixProject do
             windows_amd64: [os: :windows, cpu: :x86_64]
           ],
           extra_steps: [
-            patch: [post: [Recommender.Release.CockroachStep]]
+            patch: [post: [Recommender.Release.BundleStep]]
           ]
         ]
       ]
@@ -77,10 +78,9 @@ defmodule Recommender.MixProject do
       {:req, "~> 0.5"},
       {:explorer, "~> 0.11"},
       {:postgrex, "~> 0.19"},
-      # Local database / object-storage hosts, extracted to their own repos.
-      # CockroachStore / VersityBlobStore still carry their own host lifecycle;
-      # delegating provision + start/stop to these is a follow-up.
-      {:cockroach_local, github: "weftspun/cockroach-local"},
+      # Object-storage host, extracted to its own repo. VersityBlobStore still
+      # carries its own lifecycle, and delegating provision and start/stop to
+      # this is a follow-up. The database host is gone: it is remote now.
       {:versitygw_local, github: "weftspun/versitygw-local"},
       {:aria_storage, github: "V-Sekai-fire/aria-storage"},
       {:ex_aws, "~> 2.4"},

@@ -17,18 +17,16 @@ defmodule Recommender.Adapters.CLI do
       rfr blob put <name> <file>              chunk + store a file (aria-storage -> S3)
       rfr blob get <name> <out>               reassemble a stored blob
       rfr blob list                           list stored blobs (JSON)
-      rfr db start                            run the embedded CockroachDB in the
-                                               foreground (other rfr commands reuse it)
       rfr version                             print version
       rfr help                                print this usage
 
   ## Global options
 
       --data-dir DIR    data directory (default ~/.residual-fsq-recommender)
-      --port N          embedded cockroach SQL port (default 26257)
       --s3-port N       embedded versitygw S3 port (default 7070)
-      --db-url URL      connect to an external cockroach/postgres instead of
-                        starting the embedded node
+      --db-url URL      the database to use, for example
+                        postgres://user:pass@host:5432/rfr. Required, or set
+                        RFR_DB_URL. rfr runs no database of its own
       --checkpoint DIR  npy export dir of trained FuXi-Linear params (recommend)
 
   ## Structure
@@ -37,12 +35,12 @@ defmodule Recommender.Adapters.CLI do
   result and never writes to a device or halts, so it is unit-testable.
   `main/1` is the release entrypoint: it resolves argv (via the `__BURRITO`
   marker when packaged), calls `run/1`, prints, and halts. Persistence goes
-  through the driven ports: `Recommender.Ports.ItemSource` / `ItemSink` (embedded
-  CockroachDB adapter) and `Recommender.Ports.BlobSource` / `BlobSink` (embedded
-  versitygw + aria-storage adapter).
+  through the driven ports: `Recommender.Ports.ItemSource` / `ItemSink` (a remote
+  SQL database, connection from `--db-url`) and `Recommender.Ports.BlobSource` /
+  `BlobSink` (embedded versitygw + aria-storage adapter).
   """
 
-  alias Recommender.Adapters.CockroachStore, as: Store
+  alias Recommender.Adapters.RemoteStore, as: Store
   alias Recommender.Adapters.VersityBlobStore, as: Blob
   alias Recommender.Adapters.{NpyCheckpointSource, Serve}
   alias Recommender.Core.{FuxiLinearInferenceParams, ResidualFSQ}
@@ -96,7 +94,6 @@ defmodule Recommender.Adapters.CLI do
       ["recommend" | rest] -> cmd_recommend(rest, opts)
       ["items" | rest] -> cmd_items(rest, opts)
       ["blob" | rest] -> cmd_blob(rest, opts)
-      ["db", "start"] -> cmd_db_start(opts)
       [other | _] -> {:error, "rfr: unknown subcommand #{inspect(other)}\n\n#{usage()}", 2}
     end
   end
@@ -263,17 +260,9 @@ defmodule Recommender.Adapters.CLI do
   defp cmd_blob(_, _opts),
     do: {:error, "usage: rfr blob put <name> <file> | blob get <name> <out> | blob list", 2}
 
-  defp cmd_db_start(opts) do
-    case Store.run_foreground(store_opts(opts)) do
-      {:ok, out} -> {:ok, out}
-      {:error, msg, code} -> {:error, msg, code}
-      {:error, msg} -> {:error, msg, 1}
-    end
-  end
-
   ## Helpers
 
-  defp store_opts(opts), do: Map.take(opts, [:data_dir, :port, :db_url])
+  defp store_opts(opts), do: Map.take(opts, [:data_dir, :db_url])
   defp blob_opts(opts), do: Map.take(opts, [:data_dir, :s3_port])
 
   defp normalize({:ok, _} = ok), do: ok
@@ -337,14 +326,12 @@ defmodule Recommender.Adapters.CLI do
       rfr blob put <name> <file>              chunk + store a file (dedup)
       rfr blob get <name> <out>               reassemble a stored blob
       rfr blob list                           list stored blobs (JSON)
-      rfr db start                            run the embedded CockroachDB in foreground
       rfr version | help
 
     global options:
       --data-dir DIR   data directory (default ~/.residual-fsq-recommender)
-      --port N         embedded SQL port (default 26257)
       --s3-port N      embedded S3 gateway port (default 7070)
-      --db-url URL     use an external cockroach/postgres
+      --db-url URL     the database to use, or set RFR_DB_URL
       --checkpoint DIR npy export of trained FuXi-Linear params (recommend)
     """
     |> String.trim_trailing()

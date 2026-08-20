@@ -5,7 +5,7 @@ defmodule Recommender.Adapters.FixtureStore do
   @moduledoc """
   In-memory fixture adapter for `Recommender.Ports.ItemSource` / `Recommender.Ports.ItemSink`.
 
-  Replaces the embedded CockroachDB in CI and library use, per the hexagonal
+  Replaces the remote database in CI and library use, per the hexagonal
   decision record's "recorded-fixture adapters replace live hardware during
   CI testing". State is an `Agent` pid.
   """

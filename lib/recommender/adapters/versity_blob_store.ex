@@ -133,7 +133,7 @@ defmodule Recommender.Adapters.VersityBlobStore do
   # binary resolution at this app's bundled priv/ and env var, and the gateway
   # root at <data-dir>/blobs with this store's fixed credentials.
   defp local_opts(opts) do
-    root = Path.join(opts[:data_dir] || Recommender.Adapters.CockroachStore.default_data_dir(), "blobs")
+    root = Path.join(opts[:data_dir] || Recommender.Adapters.RemoteStore.default_data_dir(), "blobs")
 
     [
       port: opts[:s3_port],
