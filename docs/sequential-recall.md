@@ -14,7 +14,7 @@ non-commutative and thus position-aware (Gayler 2003; Kanerva 2009).
 
 An item is just its atom: `vec(id) = encode_atom(id)` — SHA-256 deterministic, zero-shot,
 recommendable the instant it has an id. Optionally bundle in text/entity atoms
-(`Memory.item_vector/3` already does) as the *only* source of content generalization now
+(`Memory.item_vector/3` already does) as the _only_ source of content generalization now
 that there are no learned embeddings.
 
 ## 1. The task
@@ -23,11 +23,13 @@ Given a session `s = [x₁, …, xₜ]` (oldest → newest), rank catalog items 
 `P(x_{t+1} = c | s)`. Two HRR signals, combined:
 
 ### Content (order-agnostic, zero-shot)
+
 Bundle the recent window into one probe and rank by similarity — items that share
 atoms (same id, shared text tokens, shared entities) score high. This is what
 `Memory.recommend/3` already computes for the content term.
 
 ### Transition (order-aware, online)
+
 A first-order successor memory. For an observed step `a → b` store the trace
 `bind(vec a, vec b)`. Recall unbinds the last item: `unbind(T, vec xₜ) ≈ vec x_{t+1}`,
 then a cleanup scan ranks catalog atoms against that noisy estimate. `unbind(bind a b) b = a`
@@ -69,10 +71,10 @@ bucket(a) = <first 4 bytes of sha256(id_a)>  mod  B
 
 Per bucket `b` keep two things:
 
-| field         | what                                              | HRR? |
-|---------------|---------------------------------------------------|------|
-| `bank[b]`     | `bundle( bind(vec a, vec bᵢ) )` over its traces   | yes  |
-| `roster[b]`   | the set of distinct successor ids written to `b`  | no (a plain `MapSet`) |
+| field       | what                                             | HRR?                  |
+| ----------- | ------------------------------------------------ | --------------------- |
+| `bank[b]`   | `bundle( bind(vec a, vec bᵢ) )` over its traces  | yes                   |
+| `roster[b]` | the set of distinct successor ids written to `b` | no (a plain `MapSet`) |
 
 - **write `a → b`:** `bank[bucket(a)] ⊕= bind(vec a, vec b)`; `roster[bucket(a)] ∪= {b}`.
 - **read given last `xₜ`:** `probe = unbind(bank[bucket(xₜ)], vec xₜ)`; score **only**
@@ -83,12 +85,14 @@ Everything stays HRR: the bank is a bundle of binds, recall is an unbind + phase
 The hash and roster are just the index that keeps each bundle inside its capacity.
 
 ### Degenerate but clean special case — one bank per source (`B = N`)
+
 `bank[a] = bind(vec a, bundle(successors of a))`, so `unbind(bank[a], vec a) =
 bundle(successors of a)` — a holographic first-order Markov row. Per-source load =
 distinct successors of `a`, almost always ≪ 256. Simple, always in-capacity; loses
 cross-source generalization (recovered separately by the content term).
 
 ### Saturation handling
+
 Monitor `snr_estimate(dim, load[b])`. When a hot source pushes its bucket past `M_max`,
 either (a) raise `B` and rehash, or (b) roll that bucket into a fresh **generation** and
 sum probes across generations at read time — bundle capacity is per-bank, so generations
@@ -100,7 +104,7 @@ full coverage.
 Two facts pin the numbers:
 
 1. **Single-shot retrieval is exact** on the phase grid — `RecommenderModel.unbind_bind`
-   (`omega`, holds at the real 65536-per-component / 4096-dim scale). So *all* recall
+   (`omega`, holds at the real 65536-per-component / 4096-dim scale). So _all_ recall
    error is superposition noise, nothing else.
 2. **Budgeted cleanup resolves iff the scan budget reaches the target.** The
    `plausible-witness-dag` ladder in `RecommenderModel` demonstrates this: `holoLevels` runs
@@ -127,12 +131,12 @@ count (`M_max ≈ 256` ⟹ `B ≥ 391`).
 Leave-one-out, target vs 100 sampled negatives, `dim = 4096`, HRR primitives
 verified against `test/fixtures/hrr_golden.json`. Chance Recall@10 ≈ 9.9%.
 
-| config                | Recall@10 | MRR@10 | NDCG@10 |
-|-----------------------|-----------|--------|---------|
-| most-popular baseline | 31.81     | 12.62  | 17.08   |
-| HRR content-only      | 27.89     | 9.63   | 13.84   |
+| config                | Recall@10 | MRR@10    | NDCG@10   |
+| --------------------- | --------- | --------- | --------- |
+| most-popular baseline | 31.81     | 12.62     | 17.08     |
+| HRR content-only      | 27.89     | 9.63      | 13.84     |
 | HRR transition-only   | **34.36** | **13.95** | **18.69** |
-| HRR combined 0.4/0.6  | 33.51     | 13.30  | 17.99   |
+| HRR combined 0.4/0.6  | 33.51     | 13.30     | 17.99     |
 
 Two levers raised the signal and both are pure HRR — no training, no dimension increase:
 
@@ -146,15 +150,15 @@ Two levers raised the signal and both are pure HRR — no training, no dimension
 
 Raising `dim` 4096 → 8192 barely moves the numbers (transition Recall 34.4 → 33.9): once
 per-bank SNR `√(dim/M_b)` clears the ~2 threshold, dimension saturates — interference, not
-dimension, was the bottleneck. The combined weighting (0.4/0.6) slightly *underperforms*
+dimension, was the bottleneck. The combined weighting (0.4/0.6) slightly _underperforms_
 transition-only here because content is now the weaker of the two signals on this dataset;
 tune the weights per corpus.
 
 ## 6. Scaling the search — resonator networks
 
-When context is a *product* of factors (position ⊛ item ⊛ user, say) the key space is
+When context is a _product_ of factors (position ⊛ item ⊛ user, say) the key space is
 combinatorial and even a roster scan is too much. A **resonator network** (Frady, Kent,
-Olshausen & Sommer 2020) factors a bound product by searching *in superposition* — it
+Olshausen & Sommer 2020) factors a bound product by searching _in superposition_ — it
 recovers the components without enumerating their cross-product, and is pure VSA
 (binds + bundles + cleanup iterated). That is the drop-in when per-bucket rosters
 themselves grow structured; it does not change any of the algebra above.

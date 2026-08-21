@@ -52,6 +52,7 @@ that the generative model does not use.
 ## Rejected alternatives (persistence)
 
 Replacing CRDB with a swappable Ecto layer was explored and dropped in favor of keeping CRDB:
+
 - **Ecto + SQLite** — real ecto_sql semantics, serverless, but a second store to maintain.
 - **Custom `Ecto.Adapter` on Explorer** — no ecto_sql semantics (no SQL / migrations); large build.
 - **Custom DuckDB `Ecto.Adapters.SQL.Connection`** — true SQL-over-Arrow with ecto_sql semantics, but

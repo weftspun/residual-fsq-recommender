@@ -14,14 +14,14 @@ This project recommends the next item in a session over **ResidualFSQ semantic I
 `Recommender.Core.Memory` — a training-free Holographic Reduced Representation (HRR) memory: bind/unbind/
 bundle over phase vectors, no neural network.
 
-The HRR path is a strong *floor* but a first-order one. Measured on MovieLens-100K
+The HRR path is a strong _floor_ but a first-order one. Measured on MovieLens-100K
 (leave-one-out, 100 sampled negatives, `docs/sequential-recall.md §5`):
 
-| | Recall@10 | NDCG@10 |
-|---|---|---|
-| HRR transition-only (ours) | 34.4 | 18.7 |
-| popularity floor | 31.8 | 17.1 |
-| trained transformer ceiling (SASRec/BERT4Rec) | ~55–80 | ~35–56 |
+|                                               | Recall@10 | NDCG@10 |
+| --------------------------------------------- | --------- | ------- |
+| HRR transition-only (ours)                    | 34.4      | 18.7    |
+| popularity floor                              | 31.8      | 17.1    |
+| trained transformer ceiling (SASRec/BERT4Rec) | ~55–80    | ~35–56  |
 
 HRR clears popularity but sits at roughly half a trained sequence model's NDCG@10, and most of that
 gap is structural: HRR models one Markov step, not the whole session. We want the trained ceiling
@@ -30,13 +30,13 @@ gap is structural: HRR models one Markov step, not the whole session. We want th
 The archived sibling [`weftspun/elixir-sequential-recommendation`](https://github.com/weftspun/elixir-sequential-recommendation)
 already implements a generative recommender in Elixir: data pipeline, FSQ tokenizer,
 **FuXi-Linear** inference (linear-attention), constrained trie decode, and an MCP server. Adopting it
-gets us a trained model over the same token idea — but its FSQ is the wrong *kind* of FSQ for us.
+gets us a trained model over the same token idea — but its FSQ is the wrong _kind_ of FSQ for us.
 
 ## Decision drivers
 
 - **Keep the residual semantic-ID contract.** `Recommender.Core.Memory` and the Lean model
   (`formal/RecommenderModel.lean`: `stage_bound`, `stage_roundtrip`, `stage_injective`, `itemKey_injective`)
-  certify a *residual* codec: 3 coarse-to-fine tokens, base-4096, injective. Any tokenizer we ship
+  certify a _residual_ codec: 3 coarse-to-fine tokens, base-4096, injective. Any tokenizer we ship
   must honor that, so HRR and the trained model consume **identical** IDs.
 - **Linear complexity for long trajectories.** The training datasets are long — MerRec has ~1B events /
   200M sessions, KuaiRand is long feed logs. Quadratic attention (T5/SASRec) does not scale here;
@@ -58,8 +58,8 @@ gets us a trained model over the same token idea — but its FSQ is the wrong *k
    attention, decoder-only. ❌ grouped/product FSQ (`reshape → 4×192`, quantized independently) is
    **not** coarse-to-fine: tokens are parallel and equal-weight, no shared-prefix generalization, and
    it violates the residual contract the Lean proofs certify.
-4. **FuXi-Linear over *Residual* FSQ (chosen).** ✅ linear-attention decoder-only generative
-   model *and* the coarse-to-fine residual semantic IDs this repo already speaks; reuses the archived
+4. **FuXi-Linear over _Residual_ FSQ (chosen).** ✅ linear-attention decoder-only generative
+   model _and_ the coarse-to-fine residual semantic IDs this repo already speaks; reuses the archived
    implementation with one tokenizer swap. ❌ requires training (GPU), a Torchx/CUDA build, and a
    larger dependency surface (Axon, Bumblebee, Torchx).
 
@@ -68,22 +68,22 @@ gets us a trained model over the same token idea — but its FSQ is the wrong *k
 **Chosen: option 4.** Port the FuXi-Linear stack into this project and **replace grouped FSQ
 with residual FSQ**. `Recommender.Core.Memory` (HRR) is retained as the training-free baseline; both
 recommenders consume the same residual IDs, giving a clean apples-to-apples comparison
-(*same tokens → { trained FuXi-Linear generation vs training-free HRR memory }*).
+(_same tokens → { trained FuXi-Linear generation vs training-free HRR memory }_).
 
 ### The core technical change: grouped FSQ → residual FSQ
 
 Both emit `S` tokens per item; they differ in **how** the tokens partition the content embedding `e`.
 
-| | Grouped / product FSQ (reference) | Residual FSQ (this decision) |
-|---|---|---|
-| decomposition | split `e` into `S` disjoint sub-vectors, quantize each | quantize all of `e`, subtract reconstruction, quantize the **residual**, repeat `S` times |
-| token semantics | parallel, order-agnostic, equal magnitude | hierarchical, coarse→fine, decreasing magnitude |
-| shared prefixes | none (independent groups) | yes — similar items agree on `t0`, then `t1`, … |
-| contract match | `levels [8,8,8,6,5]`, 4 tokens, 15 360 codes | `levels [8,8,8,8]`, 3 tokens, 4096 codes/stage (repo + Lean) |
+|                 | Grouped / product FSQ (reference)                      | Residual FSQ (this decision)                                                              |
+| --------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| decomposition   | split `e` into `S` disjoint sub-vectors, quantize each | quantize all of `e`, subtract reconstruction, quantize the **residual**, repeat `S` times |
+| token semantics | parallel, order-agnostic, equal magnitude              | hierarchical, coarse→fine, decreasing magnitude                                           |
+| shared prefixes | none (independent groups)                              | yes — similar items agree on `t0`, then `t1`, …                                           |
+| contract match  | `levels [8,8,8,6,5]`, 4 tokens, 15 360 codes           | `levels [8,8,8,8]`, 3 tokens, 4096 codes/stage (repo + Lean)                              |
 
 Residual stage `s`: `code_s = FSQ(project(r_{s-1}))`; `r_s = project(r_{s-1}) − dequant(code_s)`;
 `r_0 = project(e)`. FSQ's `bound`/`round_ste`/`codes_to_indices` (from `Core.FSQ`) are reused per
-stage unchanged — only the *driver* changes from "slice into groups" to "iterate on the residual".
+stage unchanged — only the _driver_ changes from "slice into groups" to "iterate on the residual".
 
 ## Architecture / layout
 
@@ -130,10 +130,10 @@ New deps (from the reference `mix.exs`): `torchx`, `axon`, `bumblebee`, `npy`, `
 
 ## References
 
-- FuXi-Linear — *Unleashing the Power of Linear Attention in Long-term Time-aware Sequential
-  Recommendation*, arXiv 2602.23671.
-- TIGER — Rajput et al., *Recommender Systems with Generative Retrieval*, NeurIPS 2023 (RQ-VAE
+- FuXi-Linear — _Unleashing the Power of Linear Attention in Long-term Time-aware Sequential
+  Recommendation_, arXiv 2602.23671.
+- TIGER — Rajput et al., _Recommender Systems with Generative Retrieval_, NeurIPS 2023 (RQ-VAE
   semantic IDs + T5; the lineage this project consumes).
-- FSQ — Mentzer et al., *Finite Scalar Quantization: VQ-VAE Made Simple*, ICLR 2024.
+- FSQ — Mentzer et al., _Finite Scalar Quantization: VQ-VAE Made Simple_, ICLR 2024.
 - Reference implementation: `weftspun/elixir-sequential-recommendation` (archived 2026-07-13).
 - This repo's residual-codec proofs: `formal/RecommenderModel.lean` (`stage_*`, `itemKey_injective`).

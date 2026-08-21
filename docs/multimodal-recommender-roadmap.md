@@ -5,19 +5,19 @@ Ordered by the taskweft HTN planner (`priv/plans/domains/multimodal-recommender-
 (two independent tracks → fuse) → upgrade the recommender onto the fused embedding.
 
 The one load-bearing constraint: the recommender needs **one 768-d content embedding** feeding
-*both* `project_in` (768 → 4 ID tokens) and the aux (768 → 4×192), so a first baseline can start
+_both_ `project_in` (768 → 4 ID tokens) and the aux (768 → 4×192), so a first baseline can start
 on any single 768-d embedding, and the full multimodal embedder is an upgrade, not a prerequisite.
 
 ## Phase 1 — Recommender baseline (`residual-fsq-recommender`, no multimodal deps)
 
-| # | action | work |
-|---|---|---|
-| 1 | `bootstrap_embed_mpnet_768` | one 768-d embedding (MPNet, or Python-Qwen3-VL offline) to unblock tokenization |
-| 2 | `ingest_amazon_cc0` | `Adapters.TrajectoryConvert` → per-user chronological sessions (gate-clean) |
-| 3 | `tokenize_catalog_bootstrap` | `Core.ResidualFSQ.encode_ids` over the 768-d embeds → 4-token IDs → catalog |
-| 4 | `train_fuxi_gpu_bootstrap` | `mix recommender.pretrain` (real-data path) on a GPU host |
-| 5 | `eval_hitk_vs_popularity` | `mix recommender.eval` — Hit@k / MRR vs a popularity floor |
-| 6 | `serve_bootstrap_checkpoint` | `rfr recommend --checkpoint` |
+| #   | action                       | work                                                                            |
+| --- | ---------------------------- | ------------------------------------------------------------------------------- |
+| 1   | `bootstrap_embed_mpnet_768`  | one 768-d embedding (MPNet, or Python-Qwen3-VL offline) to unblock tokenization |
+| 2   | `ingest_amazon_cc0`          | `Adapters.TrajectoryConvert` → per-user chronological sessions (gate-clean)     |
+| 3   | `tokenize_catalog_bootstrap` | `Core.ResidualFSQ.encode_ids` over the 768-d embeds → 4-token IDs → catalog     |
+| 4   | `train_fuxi_gpu_bootstrap`   | `mix recommender.pretrain` (real-data path) on a GPU host                       |
+| 5   | `eval_hitk_vs_popularity`    | `mix recommender.eval` — Hit@k / MRR vs a popularity floor                      |
+| 6   | `serve_bootstrap_checkpoint` | `rfr recommend --checkpoint`                                                    |
 
 ## Phase 2 — Multimodal embedder (two independent tracks, then fuse)
 

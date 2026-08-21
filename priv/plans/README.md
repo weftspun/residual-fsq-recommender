@@ -26,8 +26,8 @@ edit of an old one, so the history is preserved.
 
 ## Current snapshots
 
-| snapshot | domain | total | basis |
-|---|---|---|---|
+| snapshot                                | domain                  | total        | basis                                                                                                   |
+| --------------------------------------- | ----------------------- | ------------ | ------------------------------------------------------------------------------------------------------- |
 | `20260714-real-data-pretrain-path.json` | real-data pretrain path | **PT12H19M** | CPU-EXLA measured: tokenize 12171 items/s, FuXi ~3.7s/step; GPU train assumed ~100k sessions × 3 epochs |
 
 The broader 18-step roadmap (baseline → multimodal embedder → upgrade) lives in
